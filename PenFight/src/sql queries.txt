@@ -1,0 +1,29 @@
+RENAME TABLE`gamelist`.`gamelist` TO`gamelist`.`gamesOnline`;
+
+ALTER TABLE`nofgamesonline`CHANGE`NumOnline``NumOnline` INT( 11)NOTNULL DEFAULT '0'
+SELECT `nofgamesonline`.`NumOnline` FROM nofgamesonline
+
+
+INSERT INTO `helloamf`.`helloworld` (`Name`, `Number`) VALUES ('Chicharito', '14');
+
+Database fields:
+Player name
+peerID
+gameHostName == GroupName
+numPlayers
+
+Two tables:
+
+1.PlayersTable
+	-playerName
+	-peerID
+	-groupName
+2.Groups Table
+	-groupName
+	-numPlayers
+	
+/***************database details********************/
+http://dragonixonline.com/PenFight/zindex.php
+username: dragoni6_Wiz
+pass: W1zXon3
+DB: dragoni6_penfightdb

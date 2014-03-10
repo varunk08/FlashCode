@@ -1,0 +1,32 @@
+Main Class: Set up world, == DONE
+			Create Graphics,
+			Sounds,
+			Input == DONE
+			
+Input: Handle Input == DONE
+
+Shooting handler: Handle shooting for all bodies == DONE
+
+Contact handler needed?
+
+Checking for 'Fallen' Pens?
+
+Game design: Opening: single player or multi player
+			Multi player: Enter player1 name, player2 name etc
+			Create pens and start at either end
+			Decide winner
+			
+			
+Papervision 3D could possibly be used == Version 2.0
+
+Multiplayer: Using cirrus
+
+
+TODO:
+Explore cirrus; decide on using netgroup or netstream. == done; using netgroup
+Modify database to enable rooms. == done
+pens' position updates == done
+playing by turns == done
+
+TIMER:
+30 secs -- call renew method in script
