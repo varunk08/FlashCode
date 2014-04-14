@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:View xmlns:fx="http://ns.adobe.com/mxml/2009" 
+               xmlns:s="library://ns.adobe.com/flex/spark" 
+               xmlns:mx="library://ns.adobe.com/flex/halo"
+			   title="Dashboard"
+			   viewActivate="onViewActivate(event)"
+			   >
+			   
+	<fx:Script>
+		<![CDATA[
+		import flash.data.SQLConnection;
+		import flash.data.SQLStatement;
+		import flash.events.SQLErrorEvent;
+		import flash.events.SQLEvent;
+		import spark.events.IndexChangeEvent;
+		import spark.events.ViewNavigatorEvent;
+		
+		private var sqlCon_dash:SQLConnection;
+		private var logoutQuery:String = "UPDATE tbl_users SET logged_in=false WHERE username=:usrnm";
+		private var sqlStmt:SQLStatement;
+		private var createExpTblQuery:String = "CREATE TABLE IF NOT EXISTS tbl_expense(	exp_id INTEGER," + 
+																						"username VARCHAR(20)," +
+																						"exp_name VARCHAR(30),"+
+																						"amount REAL, expDate date)";
+		
+		
+		protected function onViewActivate(e:ViewNavigatorEvent):void
+		{
+			trace("Data that came to dashboard: " + data.loggedIn);
+			sqlCon_dash = data.connection;
+			sqlStmt = new SQLStatement();
+			sqlStmt.text = createExpTblQuery;
+			sqlStmt.sqlConnection = sqlCon_dash;
+			sqlStmt.addEventListener(SQLErrorEvent.ERROR, onSQLError);
+			sqlStmt.addEventListener(SQLEvent.RESULT, onExpTableCreate);
+			sqlStmt.execute();
+		}
+		
+		private function onExpTableCreate(e:SQLEvent):void 
+		{
+			trace("Exp table created");
+		}
+		
+		private function onSQLError(e:SQLErrorEvent):void 
+		{
+			trace(e.error.message);
+			trace(e);
+		}
+		
+		protected function onListClick(e:IndexChangeEvent):void
+		{
+			//var item:* = optionsList.dataProvider.getItemAt(e.newIndex);
+			
+		}
+		protected function performLogout():void
+		{
+			sqlCon_dash = data.connection;
+			sqlStmt = new SQLStatement();
+			sqlStmt.text = logoutQuery;
+			sqlStmt.parameters[':usrnm'] = data.loggedIn;
+			sqlStmt.sqlConnection = sqlCon_dash;
+			sqlStmt.addEventListener(SQLErrorEvent.ERROR, onSQLError);
+			sqlStmt.addEventListener(SQLEvent.RESULT, onLogoutSuccess);
+			sqlStmt.execute();
+		}
+		
+		
+		private function onLogoutSuccess(e:SQLEvent):void 
+		{
+			
+		}
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+
+	
+	<s:actionContent>
+		<s:Button label="Settings" />
+	</s:actionContent>
+	
+		
+		<s:List labelField="data1" id="optionsList" width="100%" height="100%" change="onListClick(event)">
+			
+			<s:dataProvider>
+				<s:ArrayList>
+					<fx:Object data1="Balance"></fx:Object>
+					<fx:Object data1="Charts"></fx:Object>
+					<fx:Object data1="Alerts"></fx:Object>
+				</s:ArrayList>
+			</s:dataProvider>
+		</s:List>
+	
+</s:View>

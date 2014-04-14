@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:View xmlns:fx="http://ns.adobe.com/mxml/2009" 
+               xmlns:s="library://ns.adobe.com/flex/spark" 
+               xmlns:mx="library://ns.adobe.com/flex/mx"
+			   title="iXpense"
+			   viewActivate="init(event)">
+	<fx:Script>
+		<![CDATA[
+			
+			
+			import flash.data.SQLConnection;
+			import flash.data.SQLStatement;
+			import flash.events.SQLErrorEvent;
+			import flash.events.SQLEvent;
+			import flash.filesystem.File;
+            import mx.validators.Validator;
+			import spark.events.ViewNavigatorEvent;
+            
+			private var db_reg:File = File.applicationStorageDirectory.resolvePath("ixpense_db.db");
+			private var sqlCon_reg:SQLConnection;
+			private var insertNewQuery:String = "INSERT INTO tbl_users(username, password,email, logged_in) VALUES (:usrnm,:pass,:email,:logged_in)";
+			private var sqlStmt:SQLStatement;
+			
+			protected function init(e:ViewNavigatorEvent):void
+			{
+				sqlCon_reg = new SQLConnection();
+				sqlCon_reg.addEventListener(SQLEvent.OPEN, onSQLOpen_reg);
+				sqlCon_reg.addEventListener(SQLErrorEvent.ERROR, onSQLError_reg);
+				sqlCon_reg.openAsync(db_reg);
+			}
+			
+			private function onSQLOpen_reg(e:SQLEvent):void 
+			{
+				trace("Opened db" + e);
+				
+			}
+			
+			private function onSQLError_reg(e:SQLErrorEvent):void 
+			{
+				trace(e.error.message);
+				trace(e.error.details);
+			}
+			
+            protected function doRegister(evt:MouseEvent):void 
+			{
+				var arr:Array = Validator.validateAll(valArr);
+				if (arr.length == 0) {
+					trace("User: "+valArr[0].source.text);
+					trace("Pass: " + valArr[1].source.text);
+					trace("Email: " + valArr[2].source.text);
+					sqlStmt = new SQLStatement();
+					sqlStmt.sqlConnection = sqlCon_reg;
+					sqlStmt.text = insertNewQuery;
+					sqlStmt.parameters[':usrnm'] = valArr[0].source.text;
+					sqlStmt.parameters[':pass'] = valArr[1].source.text;
+					sqlStmt.parameters[':email'] = valArr[2].source.text;
+					sqlStmt.parameters[':logged_in'] = true;
+					sqlStmt.addEventListener(SQLEvent.RESULT, onSQLInsert);
+					sqlStmt.addEventListener(SQLErrorEvent.ERROR, onSQLError_reg);
+					sqlStmt.execute();
+				}
+					
+            }
+			
+			private function onSQLInsert(e:SQLEvent):void 
+			{
+				navigator.popAll();
+				navigator.pushView(views.FirstView);
+			}
+            
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+		<fx:Array id="valArr">
+            <mx:StringValidator id="usrnmVal" source="{usrnm}" property="text" required="true" minLength="7" maxLength="32" trigger="{sbmt}" triggerEvent="click" tooShortError="Username must be atleast 7 chars long" tooLongError="Username must not be greater than 32 chars long" />
+            <mx:StringValidator id="psswdVal" source="{psswd}" property="text" required="true" minLength="7" maxLength="32" trigger="{sbmt}" triggerEvent="click" tooShortError="Password must be atleast 7 chars long" tooLongError="Password must not be greater than 32 chars long" />
+			<mx:EmailValidator id="emailVal" source="{email}" property="text" required="true" trigger="{sbmt}" triggerEvent="click"/>
+		</fx:Array>
+	</fx:Declarations>
+	
+	
+	
+	<s:Scroller width="100%" height="100%">
+            <s:Group>
+                <s:Form id="frm" defaultButton="{sbmt}">
+                    <s:FormHeading label="Register for iXpense" />
+                    <s:FormItem width="80%" sequenceLabel="1." label="Username:" required="true">
+                        <s:TextInput id="usrnm" maxChars="64" />
+                    </s:FormItem>
+                    <s:FormItem width="80%" sequenceLabel="2." label="Password:" required="true">
+                        <s:TextInput id="psswd" maxChars="32" displayAsPassword="true" />
+                    </s:FormItem>
+					<s:FormItem width="80%" sequenceLabel="3." label="Email:" required="false">
+                        <s:TextInput id="email"  />
+                    </s:FormItem>
+                    <s:FormItem>
+                        <s:Button id="sbmt" label="Submit" click="doRegister(event)" />
+                    </s:FormItem>
+                </s:Form>
+            </s:Group>
+        </s:Scroller>
+</s:View>

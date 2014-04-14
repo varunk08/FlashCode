@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:View xmlns:fx="http://ns.adobe.com/mxml/2009" 
+        xmlns:s="library://ns.adobe.com/flex/spark" 
+		xmlns:mx="library://ns.adobe.com/flex/mx"
+		title="iXpense"
+		viewActivate="init(event);">
+	<fx:Script>
+		<![CDATA[
+		import flash.data.SQLConnection;
+		import flash.data.SQLMode;
+		import flash.data.SQLResult;
+		import flash.data.SQLStatement;
+		import flash.events.SQLErrorEvent;
+		import flash.events.SQLEvent;
+		import flash.filesystem.File;
+		import flash.system.Capabilities;
+		import flash.events.MouseEvent;
+		import mx.validators.Validator;
+		import spark.events.ViewNavigatorEvent;
+		
+		private var db:File = File.applicationStorageDirectory.resolvePath("ixpense_db.db");
+		private var sqlCon:SQLConnection;
+		private var createTblQuery:String = "CREATE TABLE IF NOT EXISTS tbl_users(username TEXT PRIMARY KEY, password TEXT,email TEXT, logged_in BOOLEAN)";
+		private var sqlStmt:SQLStatement;
+		private var loggedInQuery:String = "SELECT username from tbl_users WHERE logged_in = true";
+		private var selectPassQuery:String = "SELECT password from tbl_users WHERE username=:usrnm";
+		private var setLoggedIn:String = "UPDATE tbl_users SET logged_in=true WHERE username=:usrnm";
+		private var userName:String;
+		private var pass:String;
+		private var viewData:Object;
+		
+		
+		/**
+		 * 
+		 * @param	e
+		 * @usage Function runs when view is activated. Attempts to open the DB
+		 */
+		protected function init(e:ViewNavigatorEvent):void
+		{
+			viewData = new Object();
+			sqlCon = new SQLConnection();
+			sqlCon.addEventListener(SQLEvent.OPEN, onDBOpen); //removed
+			sqlCon.addEventListener(SQLErrorEvent.ERROR, onSQLError);	//removed
+			sqlCon.openAsync(db);
+		}
+		
+		
+		/**
+		 * 
+		 * @param	e
+		 * @usage Common error handler for SQL
+		 */
+		private function onSQLError(e:SQLErrorEvent):void 
+		{
+			trace(e.error.message);
+			trace(e.error.details);
+		}
+		
+		/**
+		 * @usage DB opened. Attempts to create the USER table if it does not exist
+		 * @param	e
+		 */
+		private function onDBOpen(e:SQLEvent):void 
+		{
+			sqlCon.removeEventListener(SQLEvent.OPEN, onDBOpen);
+			trace(e);
+			viewData.connection = sqlCon;
+			sqlStmt = new SQLStatement();
+			sqlStmt.sqlConnection = sqlCon;
+			sqlStmt.text = createTblQuery;
+			sqlStmt.addEventListener(SQLErrorEvent.ERROR, onSQLError);	//removed
+			sqlStmt.addEventListener(SQLEvent.RESULT, onCreationResult);	//removed
+			sqlStmt.execute();
+
+		}
+		
+		/**
+		 * @usage Table creation/open successful. Attempts to check if any user is logged in
+		 * @param	e
+		 */
+		private function onCreationResult(e:SQLEvent):void 
+		{
+			trace("Creation Result: " + e);
+			sqlStmt.removeEventListener(SQLEvent.RESULT, onCreationResult);
+			//check if user has logged in
+			sqlStmt = new SQLStatement();
+			sqlStmt.sqlConnection = sqlCon;
+			sqlStmt.text = loggedInQuery;
+			sqlStmt.addEventListener(SQLEvent.RESULT, onLoggedInResult); //removed
+			sqlStmt.addEventListener(SQLErrorEvent.ERROR, onSQLError);
+			sqlStmt.execute();
+			
+		}
+		
+		/**
+		 * 
+		 * @param	e 
+		 * @usage checks for any user logged in and then passes that username to the nextview
+		 */
+		private function onLoggedInResult(e:SQLEvent):void 
+		{
+			trace("Checking Logged in: " + e);
+			var loggedInUser:SQLResult = sqlStmt.getResult();
+			trace(loggedInUser);
+			trace("Logged in: "+loggedInUser.data);
+			if (loggedInUser.data != null)
+			{
+				
+				trace("Logged in: "+loggedInUser.data[0].username);
+				sqlStmt.removeEventListener(SQLEvent.RESULT, onLoggedInResult);
+				viewData.loggedIn = loggedInUser.data[0].username;
+				
+			
+				navigator.pushView(views.FirstView, viewData);
+			}
+		}
+		
+		private function performLogin(event:flash.events.MouseEvent):void
+		{
+		
+			var arr:Array = Validator.validateAll(valArr);
+			if (arr.length == 0) 
+			{
+				userName = valArr[0].source.text;
+				pass = valArr[1].source.text;
+				
+				sqlStmt = new SQLStatement();
+				sqlStmt.sqlConnection = sqlCon;
+				sqlStmt.text = selectPassQuery;
+				sqlStmt.parameters[':usrnm'] = userName;
+				sqlStmt.addEventListener(SQLEvent.RESULT, onSQLResult_ObtainPass); //removed
+				sqlStmt.addEventListener(SQLErrorEvent.ERROR, onSQLError);		//removed
+				sqlStmt.execute();
+			}
+			
+		}
+		
+		private function onSQLResult_ObtainPass(e:SQLEvent):void 
+		{
+			var result:SQLResult = sqlStmt.getResult();
+			if (result.data != null)
+			{
+				sqlStmt.removeEventListener(SQLEvent.RESULT, onSQLResult_ObtainPass);
+				if (pass == result.data[0].password)
+				{
+					//password is correct proceed to user's account
+					//remove event listeners
+					
+					sqlStmt.removeEventListener(SQLErrorEvent.ERROR, onSQLError);
+					sqlStmt.removeEventListener(SQLEvent.RESULT, onCreationResult);
+					sqlCon.removeEventListener(SQLErrorEvent.ERROR, onSQLError);
+					viewData.connection = sqlCon;
+					viewData.loggedIn = this.loginUserName.text;
+					
+					//set logged in to true
+					sqlStmt = new SQLStatement();
+					sqlStmt.text = setLoggedIn;
+					sqlStmt.sqlConnection = sqlCon;
+					sqlStmt.parameters[':usrnm'] = this.loginUserName.text;
+					sqlStmt.addEventListener(SQLErrorEvent.ERROR, onSQLError);
+					sqlStmt.addEventListener(SQLEvent.RESULT, onSetLoggedInResult);
+					sqlStmt.execute();
+					
+				}
+				
+				else {
+					errMsg.text = "Please enter correct Username/ Password";
+				}
+			}
+			
+			else {
+				trace("DB empty");
+				errMsg.text = "No such user found. Please register.";
+			}
+		}
+		
+		private function onSetLoggedInResult(e:SQLEvent):void 
+		{
+			trace("set logged in to true");
+			sqlStmt.removeEventListener(SQLErrorEvent.ERROR, onSQLError);
+			sqlStmt.removeEventListener(SQLEvent.RESULT, onSetLoggedInResult);
+			navigator.pushView(views.FirstView, viewData);
+		}
+		private function gotoRegistration(event:flash.events.MouseEvent):void
+		{
+			
+			navigator.pushView(views.RegisterScreen);
+		}
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+		<fx:Array id="valArr">
+            <mx:StringValidator id="usrnmVal" source="{loginUserName}" property="text" required="true" minLength="7" maxLength="32" trigger="{loginBtn}" triggerEvent="click" tooShortError="Username must be atleast 7 chars long" tooLongError="Username must not be greater than 32 chars long" />
+            <mx:StringValidator id="psswdVal" source="{loginPassword}" property="text" required="true" minLength="7" maxLength="32" trigger="{loginBtn}" triggerEvent="click" tooShortError="Password must be atleast 7 chars long" tooLongError="Password must not be greater than 32 chars long" />
+		</fx:Array>
+	</fx:Declarations>
+	
+	
+	
+	<s:Scroller height="100%">
+		<s:VGroup width="100%" height="100%" paddingLeft="10" paddingTop="35" paddingRight="20" paddingBottom="20" gap="15" horizontalAlign="center">
+			
+			<s:VGroup>
+				<s:Label text="Welcome to iXpense"></s:Label>
+			</s:VGroup>
+			<s:Line width="100%">
+				<s:stroke>
+					<s:SolidColorStroke color="#DCE4CD" weight="1"/>		
+				</s:stroke>		
+			</s:Line>
+		   <s:VGroup >
+				<s:Label id="unLabel" text="Username " />
+				<s:TextInput  width="100%"  id="loginUserName" text=""></s:TextInput>
+			</s:VGroup>
+			<s:VGroup  >
+					<s:Label id="passLabel" text="Password " enabled="false" />
+					<s:TextInput width="100%"  id="loginPassword"  displayAsPassword="true" ></s:TextInput>
+			</s:VGroup>
+			
+			<s:VGroup width="100%" horizontalAlign="center">
+				<s:Label text="" id="errMsg" color="0x555555" />
+				<s:Button id="loginBtn" width="80%" label="Login" click="performLogin(event)"></s:Button>
+			</s:VGroup>
+			
+			<s:Line width="100%">
+				<s:stroke>
+					<s:SolidColorStroke color="#DCE4CD" weight="1"/>		
+				</s:stroke>		
+			</s:Line>
+			<s:VGroup paddingTop="15">
+				<s:Label text="or new user?"></s:Label>
+				<s:Button width="100%" label="Register" click="gotoRegistration(event)"></s:Button>
+			</s:VGroup>				
+		</s:VGroup>
+	</s:Scroller>
+</s:View>
+

@@ -1,0 +1,107 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009"
+xmlns:s="library://ns.adobe.com/flex/spark"
+applicationComplete="application1_applicationCompleteHandler(event)">
+<fx:Script>
+	<![CDATA[
+	import flash.data.SQLConnection;
+	import flash.data.SQLStatement;
+	import flash.events.SQLErrorEvent;
+	import flash.events.SQLEvent;
+	import mx.collections.ArrayCollection;
+	import mx.events.FlexEvent;
+	
+	private var db:File = File.userDirectory.resolvePath("users.db");
+	private var conn:SQLConnection;
+	private var createTableStmt:SQLStatement;
+	private var createTableSQL:String =	"CREATE TABLE IF NOT EXISTS User (" +
+										"userId INTEGER PRIMARY KEY AUTOINCREMENT," +
+										"firstName TEXT," + "lastName TEXT)";
+	private var selectStmt:SQLStatement;
+	private var selectSQL:String = "SELECT * FROM User";
+	private var insertStmt:SQLStatement;
+	private var insertSQL:String =	"INSERT INTO User (firstName, lastName)" +
+									"VALUES (:firstName, :lastName)";
+
+	protected function application1_applicationCompleteHandler(event:FlexEvent):void
+	{
+		conn = new SQLConnection();
+		conn.addEventListener(SQLEvent.OPEN, openHandler);
+		conn.addEventListener(SQLErrorEvent.ERROR, errorHandler);
+		conn.openAsync(db);
+	}
+	
+	private function openHandler(event:SQLEvent):void {
+		log.text += "Database opened successfully";
+		conn.removeEventListener(SQLEvent.OPEN, openHandler);
+		createTableStmt = new SQLStatement();
+		createTableStmt.sqlConnection = conn;
+		createTableStmt.text = createTableSQL;
+		createTableStmt.addEventListener(SQLEvent.RESULT, createResult);
+		createTableStmt.addEventListener(SQLErrorEvent.ERROR, errorHandler);
+		createTableStmt.execute();
+	}
+	
+	private function createResult(event:SQLEvent):void {
+		log.text += "\nTable created";
+		conn.removeEventListener(SQLEvent.RESULT, createResult);
+		selectUsers();
+	}
+
+	private function errorHandler(event:SQLErrorEvent):void {
+		log.text += "\nError message: " + event.error.message;
+		log.text += "\nDetails: " + event.error.details;
+	}
+	
+	private function selectUsers():void{
+		selectStmt = new SQLStatement();
+		selectStmt.sqlConnection = conn;
+		selectStmt.text = selectSQL;
+		selectStmt.addEventListener(SQLEvent.RESULT, selectResult);
+		selectStmt.addEventListener(SQLErrorEvent.ERROR, errorHandler);
+		selectStmt.execute();
+	}
+	
+	private function selectResult(event:SQLEvent):void {
+		log.text += "\nSelect completed";
+		var result:SQLResult = selectStmt.getResult();
+		users.dataProvider = new ArrayCollection(result.data);
+	}
+	
+	protected function button1_clickHandler(event:MouseEvent):void
+	{
+		insertStmt = new SQLStatement();
+		insertStmt.sqlConnection = conn;
+		insertStmt.text = insertSQL;
+		insertStmt.parameters[":firstName"] = firstName.text;
+		insertStmt.parameters[":lastName"] = lastName.text;
+		insertStmt.addEventListener(SQLEvent.RESULT, insertResult);
+		insertStmt.addEventListener(SQLErrorEvent.ERROR, errorHandler);
+		insertStmt.execute();
+	}
+	
+	private function insertResult(event:SQLEvent):void {
+		log.text += "\nInsert completed";
+		selectUsers();
+	}
+	]]>
+</fx:Script>
+<fx:Declarations>
+<!-- Place non-visual elements (e.g., services, value objects) here -->
+</fx:Declarations>
+
+<s:Label text="First name" top="35" left="10"/>
+<s:TextInput id="firstName" left="150" top="10" width="300"/>
+<s:Label text="Last name" top="95" left="10"/>
+<s:TextInput id="lastName" left="150" top="70" width="300"/>
+<s:Button label="Save" click="button1_clickHandler(event)" top="130" left="150"/>
+
+<s:Scroller height="200" width="100%" left="10" right="10" top="200">
+	<s:DataGroup id="users" height="100%" width="95%" itemRenderer="UserRenderer">
+		<s:layout>
+			<s:VerticalLayout/>
+		</s:layout>
+	</s:DataGroup>
+</s:Scroller>
+<s:TextArea id="log" width="100%" bottom="0" height="250"/>
+</s:Application>

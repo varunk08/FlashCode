@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:View xmlns:fx="http://ns.adobe.com/mxml/2009" 
+        xmlns:s="library://ns.adobe.com/flex/spark" actionBarVisible="false"
+		menuKeyPressed="showMenu(event)"
+		viewActivate="onViewActivate(event)">
+	<fx:Script>
+		<![CDATA[
+
+		import flash.data.SQLConnection;
+		import flash.data.SQLStatement;
+		import flash.events.SQLErrorEvent;
+		import flash.events.SQLEvent;
+		import mx.events.FlexEvent;
+		import spark.components.ButtonBar;
+		import spark.events.IndexChangeEvent;
+		import spark.events.ViewNavigatorEvent;
+		
+		private var logoutQuery:String = "UPDATE tbl_users SET logged_in=false WHERE username=:usrnm";
+		private var sqlCon:SQLConnection;
+		private var sqlStmt:SQLStatement;
+		
+		protected function onViewActivate(e:ViewNavigatorEvent):void
+		{
+			trace("FirstView");			
+			
+		}
+
+		
+		protected function showMenu(e:FlexEvent):void
+		{
+			
+		}
+
+		
+		protected function onTabChange(e:IndexChangeEvent):void
+		{
+			trace(e);
+		}
+		
+		protected function onLogoutClick(e:flash.events.MouseEvent):void
+		{
+			sqlCon = data.connection;
+			sqlStmt = new SQLStatement();
+			sqlStmt.sqlConnection = sqlCon;
+			sqlStmt.text = logoutQuery;
+			sqlStmt.parameters[':usrnm'] = data.loggedIn;
+			sqlStmt.addEventListener(SQLErrorEvent.ERROR, onSQLError);
+			sqlStmt.addEventListener(SQLEvent.RESULT, onLogoutResult);
+			sqlStmt.execute();
+			
+		}
+		
+		private function onLogoutResult(e:SQLEvent):void 
+		{
+			navigator.popToFirstView();
+		}
+		
+		private function onSQLError(e:SQLErrorEvent):void 
+		{
+			trace(e);
+		}
+		]]>
+	</fx:Script>
+	
+
+	
+	<fx:Declarations/>
+	<s:TabbedViewNavigator width="100%" height="100%" autoLayout="true" change="onTabChange(event)">
+	<s:ViewNavigator label="Dashboard" width="100%" height="100%" 
+                     firstView="views.Dashboard" firstViewData="{data}" />
+    <s:ViewNavigator label="Expenses" width="100%" height="100%" 
+                     firstView="views.ExpenseView" firstViewData="{data}" />
+    <s:ViewNavigator label="Deposits" width="100%" height="100%" 
+                     firstView="views.DepositView" firstViewData="{data}" />
+	</s:TabbedViewNavigator>
+	
+     <s:viewMenuItems>
+        <s:ViewMenuItem label="Logout" click="onLogoutClick(event)" />
+        <s:ViewMenuItem label="Settings"/>
+        <s:ViewMenuItem label="Delete"/>
+        <s:ViewMenuItem label="Edit" />
+        <s:ViewMenuItem label="Search"/>
+    </s:viewMenuItems>
+
+</s:View>
